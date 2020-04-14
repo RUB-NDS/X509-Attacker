@@ -20,6 +20,7 @@ public class ParseNativeTypeContextComponent extends ContextComponent {
             new Asn1EncapsulatingBitStringCCO(ParseNativeTypesContext.NAME),
             new Asn1EncapsulatingOctetStringCCO(ParseNativeTypesContext.NAME),
             new Asn1EndOfContentCCO(),
+            new Asn1EnumeratedCCO(),
             new Asn1IntegerCCO(),
             new Asn1NullCCO(),
             new Asn1ObjectIdentifierCCO(),

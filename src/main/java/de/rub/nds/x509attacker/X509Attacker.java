@@ -13,8 +13,10 @@ import de.rub.nds.asn1.parser.contentunpackers.DefaultContentUnpacker;
 import de.rub.nds.asn1.parser.contentunpackers.PrimitiveBitStringUnpacker;
 import de.rub.nds.asn1.translator.ContextRegister;
 import de.rub.nds.asn1.translator.ParseNativeTypesContext;
+import de.rub.nds.asn1.translator.ParseOcspTypesContext;
 import de.rub.nds.asn1.util.AttributeParser;
 import de.rub.nds.asn1tool.Asn1Tool;
+import de.rub.nds.asn1tool.filesystem.BinaryFileReader;
 import de.rub.nds.asn1tool.filesystem.TextFileReader;
 import de.rub.nds.asn1tool.xmlparser.Asn1XmlContent;
 import de.rub.nds.asn1tool.xmlparser.JaxbClassList;
@@ -136,12 +138,12 @@ public class X509Attacker {
             registerContentUnpackers();
 
             // Read certificate file
-            CertificateFileReader certificateFileReader = new CertificateFileReader(certificateFile);
-            byte[] certificateContent = certificateFileReader.readBytes();
+            BinaryFileReader certificateFileReader = new BinaryFileReader(certificateFile);
+            byte[] certificateContent = certificateFileReader.read();
 
             // Parse certificate
             Asn1Parser asn1Parser = new Asn1Parser(certificateContent, false);
-            List<Asn1Encodable> asn1Encodables = asn1Parser.parse(ParseNativeTypesContext.NAME);
+            List<Asn1Encodable> asn1Encodables = asn1Parser.parse(ParseOcspTypesContext.NAME);
             Asn1XmlContent asn1XmlContent = new Asn1XmlContent();
             asn1XmlContent.setAsn1Encodables(asn1Encodables);
 
@@ -175,6 +177,7 @@ public class X509Attacker {
     public static void registerContexts() {
         ContextRegister contextRegister = ContextRegister.getInstance();
         contextRegister.registerContext(ParseNativeTypesContext.NAME, ParseNativeTypesContext.class);
+        contextRegister.registerContext(ParseOcspTypesContext.NAME, ParseOcspTypesContext.class);
 
         // Todo: Implement X.509 contexts according to RFC 5280
     }
