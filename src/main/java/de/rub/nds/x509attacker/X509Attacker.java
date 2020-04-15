@@ -1,9 +1,15 @@
 package de.rub.nds.x509attacker;
 
-import de.rub.nds.asn1.Asn1Encodable;
-import de.rub.nds.asn1.encoder.Asn1TypeRegister;
+import de.rub.nds.asn1.*;
+import de.rub.nds.asn1.encoder.*;
 import de.rub.nds.asn1.encoder.typeprocessors.SubjectPublicKeyInfoTypeProcessor;
+import de.rub.nds.asn1.model.Asn1Integer;
+import de.rub.nds.asn1tool.filesystem.HexFileWriter;
+import de.rub.nds.asn1.model.Asn1ObjectIdentifier;
+import de.rub.nds.asn1.model.Asn1PrimitiveOctetString;
 import de.rub.nds.asn1.model.Asn1PseudoType;
+import de.rub.nds.asn1.model.Asn1Null;
+import de.rub.nds.asn1.model.Asn1Sequence;
 import de.rub.nds.asn1.model.KeyInfo;
 import de.rub.nds.asn1.model.SignatureInfo;
 import de.rub.nds.asn1.parser.Asn1Parser;
@@ -14,6 +20,7 @@ import de.rub.nds.asn1.parser.contentunpackers.PrimitiveBitStringUnpacker;
 import de.rub.nds.asn1.translator.ContextRegister;
 import de.rub.nds.asn1.translator.ParseNativeTypesContext;
 import de.rub.nds.asn1.translator.ParseOcspTypesContext;
+import de.rub.nds.asn1.translator.defaultcontextcomponentoptions.Asn1SequenceCCO;
 import de.rub.nds.asn1.util.AttributeParser;
 import de.rub.nds.asn1tool.Asn1Tool;
 import de.rub.nds.asn1tool.filesystem.BinaryFileReader;
@@ -33,8 +40,12 @@ import de.rub.nds.x509attacker.xmlsignatureengine.XmlSignatureEngine;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import org.bouncycastle.asn1.ASN1OctetString;
 
 public class X509Attacker {
 
@@ -89,42 +100,17 @@ public class X509Attacker {
 
     public static void xmlToCertificate(final String xmlFile, final String keyDirectory, final String certificateOutputDirectory) {
         try {
-            registerXmlClasses();
-            registerTypes();
+            Asn1Sequence tbsRequest = createOcspRequest();
+            List<Asn1Encodable> asn1Encodables = new LinkedList<>();
+            asn1Encodables.add(tbsRequest);
 
-            // Read XML file
-            TextFileReader textFileReader = new TextFileReader(xmlFile);
-            String xmlString = textFileReader.read();
+            Asn1Encoder asn1Encoder = new Asn1Encoder(asn1Encodables);
+            byte[] encodedAsn1 = asn1Encoder.encode();
 
-            // Parse XML
-            XmlParser xmlParser = new XmlParser(xmlString);
-            Asn1XmlContent asn1XmlContent = xmlParser.getAsn1XmlContent();
-            Map<String, Asn1Encodable> identifierMap = xmlParser.getIdentifierMap();
-
-            // Create links
-            Linker linker = new Linker(identifierMap);
-
-            // Load key files
-            KeyFileManager keyFileManager = KeyFileManager.getReference();
-            keyFileManager.init(keyDirectory);
-
-            // Create signatures
-            XmlSignatureEngine xmlSignatureEngine = new XmlSignatureEngine(linker, identifierMap);
-            xmlSignatureEngine.computeSignatures();
-
-            // Encode XML for certificate
-            List<Asn1Encodable> certificates = asn1XmlContent.getAsn1Encodables();
-            byte[][] encodedCertificates = new byte[certificates.size()][];
-            for (int i = 0; i < certificates.size(); i++) {
-                encodedCertificates[i] = Asn1EncoderForX509.encodeForCertificate(linker, certificates.get(i));
-            }
-
-            // Write certificate files
-            writeCertificates(certificateOutputDirectory, certificates, encodedCertificates);
+            HexFileWriter hexFileWriter = new HexFileWriter(certificateOutputDirectory, xmlFile);
+            hexFileWriter.write(encodedAsn1);
 
             System.out.println("Done.");
-        } catch(KeyFileManagerException e) {
-            e.printStackTrace();
         } catch(IOException e) {
             e.printStackTrace();
         }
@@ -156,6 +142,41 @@ public class X509Attacker {
         } catch(ParserException e) {
             e.printStackTrace();
         }
+    }
+
+    public static Asn1Sequence createOcspRequest()
+    {
+        Asn1Sequence tbsRequestWrapper = new Asn1Sequence();
+        Asn1Sequence tbsRequest = new Asn1Sequence();
+        Asn1Sequence requestList = new Asn1Sequence();
+        Asn1Sequence request = new Asn1Sequence();
+        Asn1Sequence reqCert1 = new Asn1Sequence();
+        Asn1Sequence hashAlgorithm1 = new Asn1Sequence();
+        Asn1Null hashAlgorithm1Filler = new Asn1Null();
+        Asn1ObjectIdentifier hashAlgorithmId1 = new Asn1ObjectIdentifier();
+        Asn1PrimitiveOctetString issuerNameHash = new Asn1PrimitiveOctetString();
+        Asn1PrimitiveOctetString issuerKeyHash = new Asn1PrimitiveOctetString();
+        Asn1Integer serialNumber = new Asn1Integer();
+
+
+        serialNumber.setValue(new BigInteger("20930635207201806962935913731345174549"));
+        issuerNameHash.setValue(new BigInteger("2B0413693DF1D33D7E89CBA055CF204F9C158C9D", 16).toByteArray());
+        issuerKeyHash.setValue(new BigInteger("B15C470AD29FD096556051734F4DDE84795AE775", 16).toByteArray());
+        hashAlgorithmId1.setValue("1.3.14.3.2.26");
+
+        hashAlgorithm1.addChild(hashAlgorithmId1);
+        hashAlgorithm1.addChild(hashAlgorithm1Filler);
+        reqCert1.addChild(hashAlgorithm1);
+        reqCert1.addChild(issuerNameHash);
+        reqCert1.addChild(issuerKeyHash);
+        reqCert1.addChild(serialNumber);
+
+        request.addChild(reqCert1);
+        requestList.addChild(request);
+        tbsRequest.addChild(requestList);
+        tbsRequestWrapper.addChild(tbsRequest);
+
+        return tbsRequestWrapper;
     }
 
     public static void registerXmlClasses() {
