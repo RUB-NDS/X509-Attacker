@@ -24,6 +24,7 @@ import de.rub.nds.asn1.translator.defaultcontextcomponentoptions.Asn1SequenceCCO
 import de.rub.nds.asn1.util.AttributeParser;
 import de.rub.nds.asn1tool.Asn1Tool;
 import de.rub.nds.asn1tool.filesystem.BinaryFileReader;
+import de.rub.nds.asn1tool.filesystem.BinaryFileWriter;
 import de.rub.nds.asn1tool.filesystem.TextFileReader;
 import de.rub.nds.asn1tool.xmlparser.Asn1XmlContent;
 import de.rub.nds.asn1tool.xmlparser.JaxbClassList;
@@ -107,8 +108,8 @@ public class X509Attacker {
             Asn1Encoder asn1Encoder = new Asn1Encoder(asn1Encodables);
             byte[] encodedAsn1 = asn1Encoder.encode();
 
-            HexFileWriter hexFileWriter = new HexFileWriter(certificateOutputDirectory, xmlFile);
-            hexFileWriter.write(encodedAsn1);
+            BinaryFileWriter binFileWriter = new BinaryFileWriter(certificateOutputDirectory, xmlFile);
+            binFileWriter.write(encodedAsn1);
 
             System.out.println("Done.");
         } catch(IOException e) {
