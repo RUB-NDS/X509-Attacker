@@ -1,0 +1,1 @@
+Invoke-WebRequest -Method POST -InFile .\request.bin -Headers @{'Content-Type' = 'application/ocsp-request'} "http://ocsp.digicert.com"
